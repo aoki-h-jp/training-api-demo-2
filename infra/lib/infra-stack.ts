@@ -33,6 +33,10 @@ export class InfraStack extends cdk.Stack {
     const api = new apigateway.RestApi(this, 'training-api-demo-2-apigw', {
       restApiName: 'training-api-demo-2-apigw',
       description: 'example REST API',
+      deployOptions: {
+        loggingLevel: apigateway.MethodLoggingLevel.INFO,
+        dataTraceEnabled: true,
+      },
     });
 
     const lambdaIntegration = new apigateway.LambdaIntegration(lambdaFunction, {

@@ -16,6 +16,7 @@ infra/*.js
 !infra/jest.config.js
 infra/*.d.ts
 infra/node_modules
+infra/cdk.json
 
 # CDK asset staging directory
 infra/.cdk.staging

@@ -3,6 +3,8 @@ import { Construct } from 'constructs';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
+import * as logs from 'aws-cdk-lib/aws-logs';
+import * as iam from 'aws-cdk-lib/aws-iam';
 
 export class InfraStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -29,15 +31,24 @@ export class InfraStack extends cdk.Stack {
 
     table.grantReadWriteData(lambdaFunction);
 
+    // ロググループの作成
+    const logGroup = new logs.LogGroup(this, 'ApiGatewayAccessLogs', {
+      logGroupName: 'training-api-demo-2-apigw-access-logs',
+      removalPolicy: cdk.RemovalPolicy.DESTROY, // スタック削除時にロググループを削除
+    });
+
     // API Gateway の作成と Lambda 統合の設定
     const api = new apigateway.RestApi(this, 'training-api-demo-2-apigw', {
       restApiName: 'training-api-demo-2-apigw',
       description: 'example REST API',
-      // ログレベルを INFO に設定
       deployOptions: {
         loggingLevel: apigateway.MethodLoggingLevel.INFO,
         dataTraceEnabled: true,
+        accessLogDestination: new apigateway.LogGroupLogDestination(logGroup),
+        accessLogFormat: apigateway.AccessLogFormat.clf(),
       },
+      cloudWatchRole: true,
+      cloudWatchRoleRemovalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
     const lambdaIntegration = new apigateway.LambdaIntegration(lambdaFunction, {

@@ -4,11 +4,21 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as logs from 'aws-cdk-lib/aws-logs';
-import * as iam from 'aws-cdk-lib/aws-iam';
+// import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
+
+export interface InfraStackProps extends cdk.StackProps {
+  aiToken: string;
+}
 
 export class InfraStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+  constructor(scope: Construct, id: string, props?: InfraStackProps) {
     super(scope, id, props);
+
+    // // Secrets Manager シークレットの作成
+    // const secret = new secretsmanager.Secret(this, 'training-api-demo-2-secret', {
+    //   secretName: 'training-api-demo-2-secret',
+    //   secretStringValue: cdk.SecretValue.unsafePlainText(props?.aiToken || ''),
+    // });
 
     // DynamoDB テーブルの作成
     const table = new dynamodb.Table(this, 'training-api-demo-2-table', {
@@ -26,6 +36,7 @@ export class InfraStack extends cdk.Stack {
       handler: 'express-app.handler',
       environment: {
         TABLE_NAME: table.tableName,
+        // SECRET_NAME: secret.secretName,
       },
     });
 
@@ -57,35 +68,117 @@ export class InfraStack extends cdk.Stack {
           statusCode: 200,
         }),
       },
+      integrationResponses: [
+        {
+          statusCode: '200',
+          responseTemplates: {
+            'application/json': JSON.stringify({ message: '成功しました' }),
+          },
+        },
+        {
+          statusCode: '400',
+          responseTemplates: {
+            'application/json': JSON.stringify({ error: 'リクエストが無効です' }),
+          },
+        },
+        {
+          statusCode: '401',
+          responseTemplates: {
+            'application/json': JSON.stringify({ error: '認証が必要です' }),
+          },
+        },
+        {
+          statusCode: '500',
+          responseTemplates: {
+            'application/json': JSON.stringify({ error: '内部サーバーエラー' }),
+          },
+        },
+        {
+          statusCode: '503',
+          responseTemplates: {
+            'application/json': JSON.stringify({ error: 'サービス利用不可' }),
+          },
+        },
+      ],
     });
+
+    // メソッド設定関数
+    const addMethod = (
+      resource: apigateway.Resource,
+      httpMethod: string,
+      integration: apigateway.Integration
+    ) => {
+      resource.addMethod(httpMethod, integration, {
+        requestParameters: getRequestParameters(httpMethod),
+        methodResponses: [
+          {
+            statusCode: '200',
+            responseModels: {
+              'application/json': apigateway.Model.EMPTY_MODEL,
+            },
+          },
+          {
+            statusCode: '201',
+            responseModels: {
+              'application/json': apigateway.Model.EMPTY_MODEL,
+            },
+          },
+          {
+            statusCode: '400',
+            responseModels: {
+              'application/json': apigateway.Model.ERROR_MODEL,
+            },
+          },
+          {
+            statusCode: '404',
+            responseModels: {
+              'application/json': apigateway.Model.ERROR_MODEL,
+            },
+          },
+          {
+            statusCode: '500',
+            responseModels: {
+              'application/json': apigateway.Model.ERROR_MODEL,
+            },
+          },
+          {
+            statusCode: '503',
+            responseModels: {
+              'application/json': apigateway.Model.ERROR_MODEL,
+            },
+          },
+        ],
+      });
+    };
+
+    // リクエストパラメータ取得関数
+    const getRequestParameters = (httpMethod: string): { [param: string]: boolean } => {
+      switch (httpMethod) {
+        case 'GET':
+          return { 'method.request.querystring.username': true };
+        case 'POST':
+        case 'PUT':
+          return { 'method.request.querystring.body': true };
+        case 'DELETE':
+          return {
+            'method.request.querystring.username': true,
+            'method.request.querystring.title': true,
+          };
+        default:
+          return {};
+      }
+    };
 
     // GET /get-reviews
-    api.root.addResource('get-reviews').addMethod('GET', lambdaIntegration, {
-      requestParameters: {
-        'method.request.querystring.username': true,
-      },
-    });
+    addMethod(api.root.addResource('get-reviews'), 'GET', lambdaIntegration);
 
     // POST /add-review
-    api.root.addResource('add-review').addMethod('POST', lambdaIntegration, {
-      requestParameters: {
-        'method.request.querystring.body': true,
-      },
-    });
+    addMethod(api.root.addResource('add-review'), 'POST', lambdaIntegration);
 
     // PUT /update-review
-    api.root.addResource('update-review').addMethod('PUT', lambdaIntegration, {
-      requestParameters: {
-        'method.request.querystring.body': true,
-      },
-    });
+    addMethod(api.root.addResource('update-review'), 'PUT', lambdaIntegration);
 
     // DELETE /delete-review
-    api.root.addResource('delete-review').addMethod('DELETE', lambdaIntegration, {
-      requestParameters: {
-        'method.request.querystring.username': true,
-        'method.request.querystring.title': true,
-      },
-    });
+    addMethod(api.root.addResource('delete-review'), 'DELETE', lambdaIntegration);
   }
 }

@@ -19,18 +19,18 @@ const dynamoDb = new AWS.DynamoDB.DocumentClient();
 const TABLE_NAME = process.env.TABLE_NAME || '';
 
 app.get('/', (req: Request, res: Response) => {
-  res.status(200).send('Hello from Express on Lambda using Function URLs!');
+  res.status(200).json({ message: 'Hello from Express on Lambda using Function URLs!' });
 });
 
 app.get('/health', (req: Request, res: Response) => {
-  res.status(200).send('OK');
+  res.status(200).json({ message: 'OK' });
 });
 
 app.get('/get-reviews', async (req: Request, res: Response) => {
   const username = req.query.username as string;
 
   if (!username) {
-    res.status(400).send('Username is required');
+    res.status(400).json({ error: 'Username is required' });
     return;
   }
 
@@ -44,10 +44,18 @@ app.get('/get-reviews', async (req: Request, res: Response) => {
 
   try {
     const data = await dynamoDb.query(params).promise();
-    res.status(200).json(data.Items);
+    if (data.Items && data.Items.length > 0) {
+      res.status(200).json({ message: 'Reviews fetched successfully', data: data.Items });
+    } else {
+      res.status(404).json({ error: 'Review not found' });
+    }
   } catch (error) {
     console.error('Error getting reviews:', error);
-    res.status(500).send('Internal Server Error');
+    if (isServiceUnavailable(error)) {
+      res.status(503).json({ error: 'Service Unavailable' });
+    } else {
+      res.status(500).json({ error: 'Internal Server Error' });
+    }
   }
 });
 
@@ -55,7 +63,7 @@ app.post('/add-review', async (req: Request, res: Response) => {
   const review: BookReview = req.body;
 
   if (!review.username || !review.title || !review.author || !review.review) {
-    res.status(400).send('All fields are required');
+    res.status(400).json({ error: 'All fields are required' });
     return;
   }
 
@@ -66,10 +74,14 @@ app.post('/add-review', async (req: Request, res: Response) => {
 
   try {
     await dynamoDb.put(params).promise();
-    res.status(201).send('Review added successfully');
+    res.status(201).json({ message: 'Review added successfully' });
   } catch (error) {
     console.error('Error adding review:', error);
-    res.status(500).send('Internal Server Error');
+    if (isServiceUnavailable(error)) {
+      res.status(503).json({ error: 'Service Unavailable' });
+    } else {
+      res.status(500).json({ error: 'Internal Server Error' });
+    }
   }
 });
 
@@ -77,7 +89,7 @@ app.put('/update-review', async (req: Request, res: Response) => {
   const review: BookReview = req.body;
 
   if (!review.username || !review.title || !review.author || !review.review) {
-    res.status(400).send('All fields are required');
+    res.status(400).json({ error: 'All fields are required' });
     return;
   }
 
@@ -88,10 +100,14 @@ app.put('/update-review', async (req: Request, res: Response) => {
 
   try {
     await dynamoDb.put(params).promise();
-    res.status(200).send('Review updated successfully');
+    res.status(200).json({ message: 'Review updated successfully' });
   } catch (error) {
     console.error('Error updating review:', error);
-    res.status(500).send('Internal Server Error');
+    if (isServiceUnavailable(error)) {
+      res.status(503).json({ error: 'Service Unavailable' });
+    } else {
+      res.status(500).json({ error: 'Internal Server Error' });
+    }
   }
 });
 
@@ -100,22 +116,49 @@ app.delete('/delete-review', async (req: Request, res: Response) => {
   const title = req.query.title as string;
 
   if (!username || !title) {
-    res.status(400).send('Username and title are required');
+    res.status(400).json({ error: 'Username and title are required' });
     return;
   }
 
   const params = {
     TableName: TABLE_NAME,
     Key: { username, title },
+    ReturnValues: 'ALL_OLD',
   };
 
   try {
-    await dynamoDb.delete(params).promise();
-    res.status(200).send('Review deleted successfully');
+    const data = await dynamoDb.delete(params).promise();
+    if (data.Attributes) {
+      res.status(200).json({ message: 'Review deleted successfully' });
+    } else {
+      res.status(404).json({ error: 'Review not found' });
+    }
   } catch (error) {
     console.error('Error deleting review:', error);
-    res.status(500).send('Internal Server Error');
+    if (isServiceUnavailable(error)) {
+      res.status(503).json({ error: 'Service Unavailable' });
+    } else {
+      res.status(500).json({ error: 'Internal Server Error' });
+    }
   }
 });
 
 export const handler = serverlessExpress({ app });
+
+/**
+ * AWS SDK のエラーがサービス利用不可 (503) に該当するかを判定する関数
+ * @param error - キャッチされたエラーオブジェクト
+ * @returns サービス利用不可の場合は true, それ以外は false
+ */
+function isServiceUnavailable(error: any): boolean {
+  if (error && error.code) {
+    const serviceUnavailableErrors = [
+      'ProvisionedThroughputExceededException',
+      'ThrottlingException',
+      'ServiceUnavailable',
+      'InternalServerError',
+    ];
+    return serviceUnavailableErrors.includes(error.code);
+  }
+  return false;
+}

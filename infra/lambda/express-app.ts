@@ -7,7 +7,7 @@ import { BookReview } from './types';
 const app = express();
 
 const corsOptions = {
-  origin: 'https://training-api-demo.vercel.app',
+  origin: 'https://training-api-demo-2.vercel.app',
   methods: ['GET', 'POST', 'OPTIONS', 'PUT', 'DELETE'],
   allowedHeaders: ['*'],
 };

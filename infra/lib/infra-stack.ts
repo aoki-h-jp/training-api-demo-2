@@ -169,16 +169,39 @@ export class InfraStack extends cdk.Stack {
       }
     };
 
+    // CORS設定を追加する関数
+    const addCorsOptions = (resource: apigateway.Resource) => {
+      resource.addCorsPreflight({
+        allowOrigins: apigateway.Cors.ALL_ORIGINS,
+        allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+        allowHeaders: [
+          'Content-Type',
+          'X-Amz-Date',
+          'Authorization',
+          'X-Api-Key',
+          'X-Amz-Security-Token',
+        ],
+      });
+    };
+
     // GET /get-reviews
-    addMethod(api.root.addResource('get-reviews'), 'GET', lambdaIntegration);
+    const getReviews = api.root.addResource('get-reviews');
+    addMethod(getReviews, 'GET', lambdaIntegration);
+    addCorsOptions(getReviews);
 
     // POST /add-review
-    addMethod(api.root.addResource('add-review'), 'POST', lambdaIntegration);
+    const addReview = api.root.addResource('add-review');
+    addMethod(addReview, 'POST', lambdaIntegration);
+    addCorsOptions(addReview);
 
     // PUT /update-review
-    addMethod(api.root.addResource('update-review'), 'PUT', lambdaIntegration);
+    const updateReview = api.root.addResource('update-review');
+    addMethod(updateReview, 'PUT', lambdaIntegration);
+    addCorsOptions(updateReview);
 
     // DELETE /delete-review
-    addMethod(api.root.addResource('delete-review'), 'DELETE', lambdaIntegration);
+    const deleteReview = api.root.addResource('delete-review');
+    addMethod(deleteReview, 'DELETE', lambdaIntegration);
+    addCorsOptions(deleteReview);
   }
 }

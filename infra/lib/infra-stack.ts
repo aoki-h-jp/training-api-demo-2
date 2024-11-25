@@ -1,24 +1,15 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as lambdaNodejs from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as logs from 'aws-cdk-lib/aws-logs';
 // import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 
-export interface InfraStackProps extends cdk.StackProps {
-  aiToken: string;
-}
-
 export class InfraStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props?: InfraStackProps) {
-    super(scope, id, props);
-
-    // // Secrets Manager シークレットの作成
-    // const secret = new secretsmanager.Secret(this, 'training-api-demo-2-secret', {
-    //   secretName: 'training-api-demo-2-secret',
-    //   secretStringValue: cdk.SecretValue.unsafePlainText(props?.aiToken || ''),
-    // });
+  constructor(scope: Construct, id: string) {
+    super(scope, id);
 
     // DynamoDB テーブルの作成
     const table = new dynamodb.Table(this, 'training-api-demo-2-table', {
@@ -29,14 +20,14 @@ export class InfraStack extends cdk.Stack {
     });
 
     // Lambda 関数の作成
-    const lambdaFunction = new lambda.Function(this, 'training-api-demo-2-lambda', {
+    const lambdaFunction = new lambdaNodejs.NodejsFunction(this, 'training-api-demo-2-lambda', {
       functionName: 'training-api-demo-2-lambda',
       runtime: lambda.Runtime.NODEJS_20_X,
-      code: lambda.Code.fromAsset('dist'),
-      handler: 'express-app.handler',
+      entry: 'lambda/express-app.ts',
+      handler: 'handler',
+      architecture: lambda.Architecture.ARM_64,
       environment: {
         TABLE_NAME: table.tableName,
-        // SECRET_NAME: secret.secretName,
       },
     });
 

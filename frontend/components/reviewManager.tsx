@@ -208,6 +208,7 @@ function ReviewDialog({ isOpen, onOpenChange, onSubmit, title, initialData, upda
   const [review, setReview] = useState<BookReview>(
     initialData || { username: username, title: '', author: '', review: '' }
   )
+  const { reviews, setReviews } = useBookReviewsStore()
 
   useEffect(() => {
     if (initialData) {
@@ -218,6 +219,25 @@ function ReviewDialog({ isOpen, onOpenChange, onSubmit, title, initialData, upda
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     onSubmit(review)
+  }
+
+  const handleGenerateReview = async (title: string, author: string) => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_APIGW_URL}/generate-review?title=${title}&author=${author}`);
+      if (!response.ok) {
+        throw new Error('Failed to generate review');
+      }
+      const data = await response.json();
+      toast.success("レビューが生成されました", {
+        description: "GET API (/generate-review)を呼び出してレビューを生成しました。",
+      });
+      setReviews([...reviews, { title, author, review: data.review, username }]);
+    } catch (error) {
+      console.error('Error generating review:', error);
+      toast.error("レビューの生成に失敗しました", {
+        description: "GET API (/generate-review)呼び出し中にエラーが発生しました。",
+      });
+    }
   }
 
   return (
@@ -272,6 +292,7 @@ function ReviewDialog({ isOpen, onOpenChange, onSubmit, title, initialData, upda
             </div>
           </div>
           <DialogFooter className="mt-4">
+            <Button variant="secondary" onClick={() => handleGenerateReview(review.title, review.author)}>レビュー生成 (GET)</Button>
             <Button type="submit">{updateMode ? "更新 (PUT)" : "新規作成 (POST)"}</Button>
           </DialogFooter>
         </form>

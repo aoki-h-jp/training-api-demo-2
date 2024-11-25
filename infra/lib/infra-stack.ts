@@ -93,14 +93,15 @@ export class InfraStack extends cdk.Stack {
       ],
     });
 
-    // メソッド設定関数
+    // メソッド追加関数
     const addMethod = (
       resource: apigateway.Resource,
       httpMethod: string,
-      integration: apigateway.Integration
+      integration: apigateway.Integration,
+      customRequestParameters?: { [param: string]: boolean }
     ) => {
       resource.addMethod(httpMethod, integration, {
-        requestParameters: getRequestParameters(httpMethod),
+        requestParameters: customRequestParameters || getRequestParameters(httpMethod),
         methodResponses: [
           {
             statusCode: '200',
@@ -194,5 +195,18 @@ export class InfraStack extends cdk.Stack {
     const deleteReview = api.root.addResource('delete-review');
     addMethod(deleteReview, 'DELETE', lambdaIntegration);
     addCorsOptions(deleteReview);
+
+    // GET /generate-review の修正
+    const generateReview = api.root.addResource('generate-review');
+    addMethod(
+      generateReview,
+      'GET',
+      lambdaIntegration,
+      {
+        'method.request.querystring.title': true,
+        'method.request.querystring.author': true,
+      }
+    );
+    addCorsOptions(generateReview);
   }
 }

@@ -27,8 +27,7 @@ export default function UsernameDialog() {
           throw new Error('Failed to fetch reviews');
         }
         const data = await response.json()
-        console.log("data", data);
-        setReviews(data)
+        setReviews(data.data)
       }
       fetchData()
       setIsOpen(false)

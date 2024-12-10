@@ -62,6 +62,10 @@ export class InfraStack extends cdk.Stack {
       integrationResponses: [
         {
           statusCode: '200',
+          responseParameters: {
+            'method.response.header.Access-Control-Allow-Origin': "'https://training-api-demo-2.vercel.app'",
+            'method.response.header.Access-Control-Allow-Credentials': "'true'",
+          },
           responseTemplates: {
             'application/json': JSON.stringify({ message: '成功しました' }),
           },
@@ -93,7 +97,7 @@ export class InfraStack extends cdk.Stack {
       ],
     });
 
-    // メソッド追加関数
+    // メソッド追加関数を修正
     const addMethod = (
       resource: apigateway.Resource,
       httpMethod: string,
@@ -105,6 +109,10 @@ export class InfraStack extends cdk.Stack {
         methodResponses: [
           {
             statusCode: '200',
+            responseParameters: {
+              'method.response.header.Access-Control-Allow-Origin': true,
+              'method.response.header.Access-Control-Allow-Credentials': true,
+            },
             responseModels: {
               'application/json': apigateway.Model.EMPTY_MODEL,
             },
@@ -161,12 +169,24 @@ export class InfraStack extends cdk.Stack {
       }
     };
 
-    // CORS設定を追加する関数
+    // CORS設定を追加する関数を修正
     const addCorsOptions = (resource: apigateway.Resource) => {
       resource.addCorsPreflight({
-        allowOrigins: apigateway.Cors.ALL_ORIGINS,
+        // 特定のオリジンを許可
+        allowOrigins: [
+          'https://training-api-demo-2.vercel.app',
+        ],
         allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
         allowHeaders: [
+          'Content-Type',
+          'X-Amz-Date',
+          'Authorization',
+          'X-Api-Key',
+          'X-Amz-Security-Token',
+        ],
+        // レスポンスヘッダーを追加
+        allowCredentials: true,
+        exposeHeaders: [
           'Content-Type',
           'X-Amz-Date',
           'Authorization',

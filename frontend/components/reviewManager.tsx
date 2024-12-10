@@ -208,7 +208,6 @@ function ReviewDialog({ isOpen, onOpenChange, onSubmit, title, initialData, upda
   const [review, setReview] = useState<BookReview>(
     initialData || { username: username, title: '', author: '', review: '' }
   )
-  const { reviews, setReviews } = useBookReviewsStore()
 
   useEffect(() => {
     if (initialData) {
@@ -231,7 +230,7 @@ function ReviewDialog({ isOpen, onOpenChange, onSubmit, title, initialData, upda
       toast.success("レビューが生成されました", {
         description: "GET API (/generate-review)を呼び出してレビューを生成しました。",
       });
-      setReviews([...reviews, { title, author, review: data.review, username }]);
+      setReview(prev => ({ ...prev, review: data.review }));
     } catch (error) {
       console.error('Error generating review:', error);
       toast.error("レビューの生成に失敗しました", {
